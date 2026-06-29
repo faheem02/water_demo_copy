@@ -2,7 +2,7 @@
 require_once '../includes/db.php';
 if (!isset($_SESSION['admin_logged_in'])) header("Location: ../login.php");
 
-$report_type = isset($_GET['type']) ? $_GET['type'] : 'daily';
+$report_type = isset($_GET['type']) ? $_GET['type'] : 'monthly';
 $from_date = isset($_GET['from_date']) ? $_GET['from_date'] : date('Y-m-d');
 $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : date('Y-m-d');
 $month = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
@@ -19,80 +19,7 @@ $total_customers = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as to
 $total_outstanding = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(outstanding_balance) as total FROM customers"))['total'] ?? 0;
 $total_bottles_out = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(empty_bottles_balance) as total FROM customers"))['total'] ?? 0;
 
-if($report_type == 'daily') {
-    $report_title = "Daily Sales Report";
-    $sales = mysqli_query($conn, "SELECT SUM(total_amount) as total, COUNT(*) as deliveries, SUM(bottles_delivered) as bottles FROM water_deliveries WHERE $where_dates");
-    $row = mysqli_fetch_assoc($sales);
-    
-    // Get daily breakdown
-    $daily_breakdown = mysqli_query($conn, "SELECT DATE(delivery_datetime) as date, SUM(total_amount) as total, COUNT(*) as count FROM water_deliveries WHERE $where_dates GROUP BY DATE(delivery_datetime) ORDER BY date DESC");
-    
-    $report_data = '
-    <div class="row g-4 mb-4">
-        <div class="col-md-4">
-            <div class="summary-card bg-primary">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <small>Total Sales</small>
-                        <h3 class="mb-0">Rs ' . number_format($row['total'], 2) . '</h3>
-                    </div>
-                    <i class="fas fa-chart-line fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="summary-card bg-success">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <small>Total Deliveries</small>
-                        <h3 class="mb-0">' . number_format($row['deliveries']) . '</h3>
-                    </div>
-                    <i class="fas fa-truck fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="summary-card bg-info">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <small>Bottles Delivered</small>
-                        <h3 class="mb-0">' . number_format($row['bottles']) . '</h3>
-                    </div>
-                    <i class="fas fa-wine-bottle fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>';
-    
-    if(mysqli_num_rows($daily_breakdown) > 0) {
-        $report_data .= '
-        <div class="table-responsive">
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Deliveries</th>
-                        <th class="text-end">Total Amount (Rs)</th>
-                    </tr>
-                </thead>
-                <tbody>';
-        while($day = mysqli_fetch_assoc($daily_breakdown)) {
-            $report_data .= '
-                <tr>
-                    <td>' . date('d-m-Y', strtotime($day['date'])) . '</td>
-                    <td><span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill">' . $day['count'] . ' deliveries</span></td>
-                    <td class="text-end fw-bold">Rs ' . number_format($day['total'], 2) . '</td>
-                </tr>';
-        }
-        $report_data .= '
-                </tbody>
-            </table>
-        </div>';
-    } else {
-        $report_data .= '<div class="empty-state"><i class="fas fa-chart-line"></i><p>No sales data found for selected period</p></div>';
-    }
-    
-} elseif($report_type == 'monthly') {
+if($report_type == 'monthly') {
     $report_title = "Monthly Sales Report - " . date('F Y', strtotime($month . '-01'));
     
     $monthly_sales = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_amount) as total, COUNT(*) as deliveries, SUM(bottles_delivered) as bottles FROM water_deliveries WHERE DATE_FORMAT(delivery_datetime, '%Y-%m')='$month'"));
@@ -470,9 +397,6 @@ $routes = mysqli_query($conn, "SELECT * FROM routes ORDER BY route_name");
 
     <!-- Quick Report Buttons -->
     <div class="quick-buttons">
-        <a href="?type=daily" class="quick-btn <?php echo $report_type == 'daily' ? 'active' : ''; ?>">
-            <i class="fas fa-calendar-day me-1"></i> Daily Sales
-        </a>
         <a href="?type=monthly" class="quick-btn <?php echo $report_type == 'monthly' ? 'active' : ''; ?>">
             <i class="fas fa-calendar-alt me-1"></i> Monthly Sales
         </a>

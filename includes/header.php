@@ -295,20 +295,46 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Admini
         <li class="sidebar-divider"></li>
         <li class="sidebar-title">Customer Management</li>
         
-        <!-- CUSTOMERS -->
-        <li>
-            <a href="<?php echo $base_url; ?>pages/customers.php">
+        <!-- CUSTOMERS with Submenu -->
+        <li class="has-submenu">
+            <a href="javascript:void(0)" class="submenu-trigger">
                 <i class="fas fa-users"></i>
                 <span>Customers</span>
+                <i class="fas fa-chevron-down toggle-submenu"></i>
             </a>
+            <ul class="submenu">
+                <li>
+                    <a href="<?php echo $base_url; ?>pages/customers.php">
+                        <i class="fas fa-route"></i> Route Management
+                    </a>
+                </li>
+                <li>
+                    <a href="<?php echo $base_url; ?>pages/customer_view.php">
+                        <i class="fas fa-eye"></i> View Customer
+                    </a>
+                </li>
+            </ul>
         </li>
 
-        <!-- DELIVERIES -->
-        <li>
-            <a href="<?php echo $base_url; ?>pages/deliveries.php">
+        <!-- DELIVERIES with Submenu -->
+        <li class="has-submenu">
+            <a href="javascript:void(0)" class="submenu-trigger">
                 <i class="fas fa-truck"></i>
                 <span>Daily Delivery</span>
+                <i class="fas fa-chevron-down toggle-submenu"></i>
             </a>
+            <ul class="submenu">
+                <li>
+                    <a href="<?php echo $base_url; ?>pages/deliveries.php">
+                        <i class="fas fa-pen"></i> Entry Point
+                    </a>
+                </li>
+                <li>
+                    <a href="<?php echo $base_url; ?>pages/delivery_view.php">
+                        <i class="fas fa-eye"></i> View Point
+                    </a>
+                </li>
+            </ul>
         </li>
         
         <!-- RETURN -->
@@ -340,6 +366,14 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Admini
             <a href="<?php echo $base_url; ?>pages/bottle_tracking.php">
                 <i class="fas fa-bottle-water"></i>
                 <span>Bottle Tracking</span>
+            </a>
+        </li>
+
+        <!-- PRODUCT STOCK -->
+        <li>
+            <a href="<?php echo $base_url; ?>pages/stock.php">
+                <i class="fas fa-boxes"></i>
+                <span>Product Stock</span>
             </a>
         </li>
 
@@ -436,14 +470,6 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Admini
             <a href="<?php echo $base_url; ?>pages/reports.php">
                 <i class="fas fa-chart-line"></i>
                 <span>All Reports</span>
-            </a>
-        </li>
-
-        <!-- STOCK Management (Product Stock - existing) -->
-        <li>
-            <a href="<?php echo $base_url; ?>pages/stock.php">
-                <i class="fas fa-boxes"></i>
-                <span>Product Stock</span>
             </a>
         </li>
 

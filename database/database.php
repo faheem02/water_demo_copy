@@ -31,7 +31,9 @@ CREATE TABLE IF NOT EXISTS `users` (
 CREATE TABLE IF NOT EXISTS `routes` (
     `id` INT(11) NOT NULL AUTO_INCREMENT,
     `route_name` VARCHAR(200) NOT NULL,
-    `description` TEXT DEFAULT NULL,
+    `block` VARCHAR(200) DEFAULT NULL,
+    `area` VARCHAR(200) DEFAULT NULL,
+    `salesman` VARCHAR(200) DEFAULT NULL,
     `created_datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -50,6 +52,9 @@ CREATE TABLE IF NOT EXISTS `customers` (
     `opening_balance` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     `empty_bottles_balance` INT(11) NOT NULL DEFAULT 0,
     `outstanding_balance` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `block` VARCHAR(200) DEFAULT NULL,
+    `area` VARCHAR(200) DEFAULT NULL,
+    `salesman` VARCHAR(200) DEFAULT NULL,
     `status` VARCHAR(20) NOT NULL DEFAULT 'Active',
     `created_datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -120,6 +125,7 @@ CREATE TABLE IF NOT EXISTS `bottle_tracking` (
     `tracking_date` DATE NOT NULL,
     `bottles_delivered` INT(11) NOT NULL DEFAULT 0,
     `bottles_returned` INT(11) NOT NULL DEFAULT 0,
+    `bottles_broken` INT(11) NOT NULL DEFAULT 0,
     `pending_empties` INT(11) NOT NULL DEFAULT 0,
     `notes` TEXT DEFAULT NULL,
     `reference_id` INT(11) DEFAULT NULL,
@@ -383,6 +389,41 @@ if (mysqli_multi_query($conn, $sql)) {
         }
     } while (mysqli_next_result($conn));
     
+    // Migrate routes table if it still has old description column
+    $routes_cols = mysqli_query($conn, "SHOW COLUMNS FROM routes LIKE 'description'");
+    if (mysqli_num_rows($routes_cols) > 0) {
+        mysqli_query($conn, "ALTER TABLE routes DROP COLUMN description");
+        mysqli_query($conn, "ALTER TABLE routes ADD COLUMN block VARCHAR(200) DEFAULT NULL AFTER route_name");
+        mysqli_query($conn, "ALTER TABLE routes ADD COLUMN area VARCHAR(200) DEFAULT NULL AFTER block");
+        mysqli_query($conn, "ALTER TABLE routes ADD COLUMN salesman VARCHAR(200) DEFAULT NULL AFTER area");
+        echo "<li>✓ Routes table migrated (added block, area, salesman)</li>";
+    } else {
+        // Ensure columns exist even if table was created fresh
+        $check_block = mysqli_query($conn, "SHOW COLUMNS FROM routes LIKE 'block'");
+        if (mysqli_num_rows($check_block) == 0) {
+            mysqli_query($conn, "ALTER TABLE routes ADD COLUMN block VARCHAR(200) DEFAULT NULL AFTER route_name");
+            mysqli_query($conn, "ALTER TABLE routes ADD COLUMN area VARCHAR(200) DEFAULT NULL AFTER block");
+            mysqli_query($conn, "ALTER TABLE routes ADD COLUMN salesman VARCHAR(200) DEFAULT NULL AFTER area");
+            echo "<li>✓ Routes table updated (added block, area, salesman)</li>";
+        }
+    }
+    
+    // Migrate customers table to add block/area/salesman columns
+    $check_cust_block = mysqli_query($conn, "SHOW COLUMNS FROM customers LIKE 'block'");
+    if (mysqli_num_rows($check_cust_block) == 0) {
+        mysqli_query($conn, "ALTER TABLE customers ADD COLUMN block VARCHAR(200) DEFAULT NULL AFTER outstanding_balance");
+        mysqli_query($conn, "ALTER TABLE customers ADD COLUMN area VARCHAR(200) DEFAULT NULL AFTER block");
+        mysqli_query($conn, "ALTER TABLE customers ADD COLUMN salesman VARCHAR(200) DEFAULT NULL AFTER area");
+        echo "<li>✓ Customers table updated (added block, area, salesman)</li>";
+    }
+    
+    // Migrate bottle_tracking table to add bottles_broken column
+    $check_broken = mysqli_query($conn, "SHOW COLUMNS FROM bottle_tracking LIKE 'bottles_broken'");
+    if ($check_broken && mysqli_num_rows($check_broken) == 0) {
+        mysqli_query($conn, "ALTER TABLE bottle_tracking ADD COLUMN bottles_broken INT(11) NOT NULL DEFAULT 0 AFTER bottles_returned");
+        echo "<li>✓ Bottle tracking table updated (added bottles_broken)</li>";
+    }
+
     // Insert default admin user
     $check_admin = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM users");
     $admin_row = mysqli_fetch_assoc($check_admin);

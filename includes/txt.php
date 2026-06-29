@@ -6,7 +6,7 @@ if(!$conn){
 }
 
 $software_name = "Water Supply System";
-$company_name = "I pure drinking water";
+$company_name = "I Pure Drinking Water";
 $owner_name = "Muhammad Usman";
 $owner_address = "House no 99 C block Gulshan iqbal Faisalabad";
 $owner_phone = "03007769500";

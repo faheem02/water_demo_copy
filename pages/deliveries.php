@@ -19,7 +19,6 @@ $success = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_delivery'])) {
-    $customer_id = intval($_POST['customer_id']);
     $product_id = intval($_POST['product_id']);
     $bottles = intval($_POST['bottles_delivered']);
     $empties_returned = intval($_POST['empty_bottles_returned']);
@@ -27,8 +26,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_delivery'])) {
     $notes = mysqli_real_escape_string($conn, $_POST['notes']);
     $datetime = date('Y-m-d H:i:s');
 
-    // Get customer details
-    $cust = mysqli_fetch_assoc(mysqli_query($conn, "SELECT bottle_rate, outstanding_balance, empty_bottles_balance, customer_name FROM customers WHERE id=$customer_id"));
+    // Handle walk-in customer
+    if ($_POST['customer_id'] === 'new') {
+        $w_name = mysqli_real_escape_string($conn, $_POST['walkin_name']);
+        $w_mobile = mysqli_real_escape_string($conn, $_POST['walkin_mobile']);
+        $w_address = mysqli_real_escape_string($conn, $_POST['walkin_address']);
+        $w_route = intval($_POST['walkin_route']) ?: 'NULL';
+        $w_block = mysqli_real_escape_string($conn, $_POST['walkin_block']);
+        $w_area = mysqli_real_escape_string($conn, $_POST['walkin_area']);
+        $w_salesman = mysqli_real_escape_string($conn, $_POST['walkin_salesman']);
+        mysqli_query($conn, "INSERT INTO customers (customer_name, mobile, address, route_id, bottle_rate, outstanding_balance, block, area, salesman, status, created_datetime) VALUES ('$w_name', '$w_mobile', '$w_address', $w_route, $rate, 0, '$w_block', '$w_area', '$w_salesman', 'Active', '$datetime')");
+        $customer_id = mysqli_insert_id($conn);
+        $cust = ['customer_name' => $w_name, 'outstanding_balance' => 0, 'empty_bottles_balance' => 0, 'bottle_rate' => $rate, 'block' => $w_block, 'area' => $w_area, 'salesman' => $w_salesman, 'route_name' => ''];
+        if ($w_route !== 'NULL') {
+            $route_row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT route_name FROM routes WHERE id=$w_route"));
+            $cust['route_name'] = $route_row['route_name'] ?? '';
+        }
+    } else {
+        $customer_id = intval($_POST['customer_id']);
+        // Get customer details
+        $cust = mysqli_fetch_assoc(mysqli_query($conn, "SELECT c.bottle_rate, c.outstanding_balance, c.empty_bottles_balance, c.customer_name, c.block, c.area, c.salesman, r.route_name FROM customers c LEFT JOIN routes r ON c.route_id = r.id WHERE c.id=$customer_id"));
+    }
     
     // Get product details
     $product = mysqli_fetch_assoc(mysqli_query($conn, "SELECT product_name, sale_price, current_stock, min_stock_level FROM products WHERE id=$product_id AND status='Active'"));
@@ -58,8 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_delivery'])) {
                                  VALUES ($customer_id, '$datetime', 'Water Delivery - $bottles bottles of {$product['product_name']} @ Rs $rate', $total, 0, $new_balance, $delivery_id, 'delivery')");
             
             // Bottle tracking entry
-            mysqli_query($conn, "INSERT INTO bottle_tracking (customer_id, tracking_date, bottles_delivered, bottles_returned, pending_empties, notes, reference_id) 
-                                 VALUES ($customer_id, '$datetime', $bottles, $empties_returned, $new_empties, '$notes', $delivery_id)");
+            mysqli_query($conn, "INSERT INTO bottle_tracking (customer_id, tracking_date, bottles_delivered, bottles_returned, bottles_broken, pending_empties, notes, reference_id) 
+                                 VALUES ($customer_id, '$datetime', $bottles, $empties_returned, 0, $new_empties, '$notes', $delivery_id)");
             
             // ========== STOCK MANAGEMENT: DEDUCT STOCK ==========
             $new_stock = $product['current_stock'] - $bottles;
@@ -85,17 +103,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_delivery'])) {
 }
 
 // Get customer list for dropdown
-$customers_list = mysqli_query($conn, "SELECT id, customer_name, mobile FROM customers WHERE status='Active' ORDER BY customer_name");
+$customers_list = mysqli_query($conn, "SELECT c.id, c.customer_name, c.mobile, c.block, c.area, c.salesman, r.route_name FROM customers c LEFT JOIN routes r ON c.route_id = r.id WHERE c.status='Active' ORDER BY c.customer_name");
+
+// Get routes for walk-in form
+$routes_list = mysqli_query($conn, "SELECT * FROM routes ORDER BY route_name");
 
 // Get active products with stock
 $products_list = mysqli_query($conn, "SELECT id, product_name, sale_price, current_stock FROM products WHERE status='Active' AND current_stock > 0 ORDER BY product_name");
-
-// Get recent deliveries with product info
-$deliveries = mysqli_query($conn, "SELECT d.*, c.customer_name, c.mobile, p.product_name, p.sale_price 
-                                   FROM water_deliveries d 
-                                   JOIN customers c ON d.customer_id = c.id 
-                                   LEFT JOIN products p ON d.product_id = p.id 
-                                   ORDER BY d.delivery_datetime DESC LIMIT 50");
 
 // Get today's sales summary
 $today_total = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(total_amount),0) as total, COALESCE(SUM(bottles_delivered),0) as bottles FROM water_deliveries WHERE DATE(delivery_datetime)=CURDATE()"));
@@ -277,26 +291,40 @@ $products_stock = mysqli_query($conn, "SELECT id, product_name, current_stock, m
         </div>
     <?php endif; ?>
 
-    <div class="row g-4">
+    <div class="row justify-content-center">
         <!-- Delivery Form Column -->
-        <div class="col-lg-5">
+        <div class="col-lg-6">
             <div class="card delivery-card">
                 <div class="card-header">
                     <i class="fas fa-clipboard-list me-2"></i> Record New Delivery
                 </div>
                 <div class="card-body p-4">
                     <form method="POST" class="delivery-form" id="deliveryForm">
-                        <!-- Customer Selection with Search -->
+                        <!-- Walk-in Toggle -->
                         <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="walkinToggle" onchange="toggleWalkin()">
+                                <label class="form-check-label fw-semibold" for="walkinToggle">
+                                    <i class="fas fa-walking me-1"></i> Walk-in Customer
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Existing Customer Selection -->
+                        <div class="mb-3" id="existingCustomerSection">
                             <label class="form-label"><i class="fas fa-user me-1"></i> Select Customer <span class="text-danger">*</span></label>
-                            <select name="customer_id" id="customerId" class="form-select" required onchange="updateCustomerInfo()">
+                            <select name="customer_id" id="customerId" class="form-select" onchange="updateCustomerInfo()">
                                 <option value="">-- Select Customer --</option>
                                 <?php 
                                 mysqli_data_seek($customers_list, 0);
                                 while($c = mysqli_fetch_assoc($customers_list)): ?>
                                     <option value="<?php echo $c['id']; ?>" 
                                             data-name="<?php echo htmlspecialchars($c['customer_name']); ?>" 
-                                            data-mobile="<?php echo $c['mobile']; ?>">
+                                            data-mobile="<?php echo $c['mobile']; ?>"
+                                            data-route="<?php echo htmlspecialchars($c['route_name'] ?? ''); ?>"
+                                            data-block="<?php echo htmlspecialchars($c['block'] ?? ''); ?>"
+                                            data-area="<?php echo htmlspecialchars($c['area'] ?? ''); ?>"
+                                            data-salesman="<?php echo htmlspecialchars($c['salesman'] ?? ''); ?>">
                                         <?php echo htmlspecialchars($c['customer_name']); ?> - <?php echo $c['mobile']; ?>
                                     </option>
                                 <?php endwhile; ?>
@@ -305,6 +333,54 @@ $products_stock = mysqli_query($conn, "SELECT id, product_name, current_stock, m
                                 <i class="fas fa-user-check me-1 text-success"></i>
                                 Customer: <strong id="displayCustomerName"></strong>
                                 <br><small id="displayCustomerMobile"></small>
+                                <br><small><strong>Route:</strong> <span id="displayRoute"></span> | <strong>Block:</strong> <span id="displayBlock"></span> | <strong>Area:</strong> <span id="displayArea"></span> | <strong>Salesman:</strong> <span id="displaySalesman"></span></small>
+                            </div>
+                        </div>
+
+                        <!-- Walk-in Customer Fields (hidden by default) -->
+                        <div id="walkinSection" style="display: none;">
+                            <div class="card mb-3" style="background: #fff8e1; border: 1px solid #ffe082; border-radius: 12px;">
+                                <div class="card-body p-3">
+                                    <h6 class="mb-3" style="color: #f57f17;"><i class="fas fa-walking me-2"></i> New Walk-in Customer Details</h6>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label" style="font-size: 12px;">Full Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="walkin_name" id="walkinName" class="form-control" placeholder="Customer name">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label" style="font-size: 12px;">Mobile</label>
+                                            <input type="text" name="walkin_mobile" id="walkinMobile" class="form-control" placeholder="Mobile number">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label" style="font-size: 12px;">Address</label>
+                                            <input type="text" name="walkin_address" id="walkinAddress" class="form-control" placeholder="Address">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label" style="font-size: 12px;">Route</label>
+                                            <select name="walkin_route" id="walkinRoute" class="form-select" onchange="prefillWalkinRoute()">
+                                                <option value="">-- Select --</option>
+                                                <?php
+                                                mysqli_data_seek($routes_list, 0);
+                                                while($rt = mysqli_fetch_assoc($routes_list)):
+                                                ?>
+                                                <option value="<?php echo $rt['id']; ?>" data-block="<?php echo htmlspecialchars($rt['block'] ?? ''); ?>" data-area="<?php echo htmlspecialchars($rt['area'] ?? ''); ?>" data-salesman="<?php echo htmlspecialchars($rt['salesman'] ?? ''); ?>"><?php echo htmlspecialchars($rt['route_name']); ?></option>
+                                                <?php endwhile; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label" style="font-size: 12px;">Block</label>
+                                            <input type="text" name="walkin_block" id="walkinBlock" class="form-control" placeholder="Block">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label" style="font-size: 12px;">Area</label>
+                                            <input type="text" name="walkin_area" id="walkinArea" class="form-control" placeholder="Area">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label" style="font-size: 12px;">Salesman</label>
+                                            <input type="text" name="walkin_salesman" id="walkinSalesman" class="form-control" placeholder="Salesman">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -375,54 +451,6 @@ $products_stock = mysqli_query($conn, "SELECT id, product_name, current_stock, m
                 </div>
             </div>
         </div>
-
-        <!-- Recent Deliveries Column -->
-        <div class="col-lg-7">
-            <div class="card delivery-card">
-                <div class="card-header">
-                    <i class="fas fa-history me-2"></i> Recent Deliveries
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table delivery-table mb-0" id="deliveriesTable">
-                            <thead>
-                                <tr>
-                                    <th>Date & Time</th>
-                                    <th>Customer</th>
-                                    <th>Product</th>
-                                    <th class="text-center">Bottles</th>
-                                    <th class="text-center">Returned</th>
-                                    <th class="text-end">Rate (Rs)</th>
-                                    <th class="text-end">Total (Rs)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if(mysqli_num_rows($deliveries) > 0): ?>
-                                    <?php while($d = mysqli_fetch_assoc($deliveries)): ?>
-                                        <tr>
-                                            <td><i class="far fa-calendar-alt me-1 text-muted"></i> <?php echo date('d/m/y h:i A', strtotime($d['delivery_datetime'])); ?></td>
-                                            <td><strong><?php echo htmlspecialchars($d['customer_name']); ?></strong></td>
-                                            <td><?php echo htmlspecialchars($d['product_name'] ?? 'N/A'); ?></td>
-                                            <td class="text-center"><span class="badge bg-primary rounded-pill"><?php echo $d['bottles_delivered']; ?></span></td>
-                                            <td class="text-center"><?php echo $d['empty_bottles_returned']; ?></td>
-                                            <td class="text-end">Rs <?php echo number_format($d['bottle_rate'], 2); ?></td>
-                                            <td class="text-end fw-bold text-success">Rs <?php echo number_format($d['total_amount'], 2); ?></td>
-                                        </tr>
-                                    <?php endwhile; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="7" class="text-center py-5 text-muted">
-                                            <i class="fas fa-truck fa-3x mb-3 d-block opacity-25"></i>
-                                            No deliveries recorded yet.
-                                        </td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 </div>
@@ -430,6 +458,7 @@ $products_stock = mysqli_query($conn, "SELECT id, product_name, current_stock, m
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 // DOM Elements
+let isWalkin = false;
 const customerSelect = document.getElementById('customerId');
 const selectedCustomerInfo = document.getElementById('selectedCustomerInfo');
 const displayCustomerName = document.getElementById('displayCustomerName');
@@ -447,14 +476,49 @@ const productStockInfo = document.getElementById('productStockInfo');
 let currentProductStock = 0;
 let currentProductPrice = 0;
 
+// Toggle between walk-in and existing customer
+function toggleWalkin() {
+    isWalkin = document.getElementById('walkinToggle').checked;
+    document.getElementById('existingCustomerSection').style.display = isWalkin ? 'none' : 'block';
+    document.getElementById('walkinSection').style.display = isWalkin ? 'block' : 'none';
+    if (isWalkin) {
+        customerSelect.value = 'new';
+        customerSelect.removeAttribute('required');
+        selectedCustomerInfo.style.display = 'none';
+    } else {
+        customerSelect.value = '';
+        customerSelect.setAttribute('required', 'required');
+    }
+    enableSubmit();
+}
+
+// Prefill walk-in fields from selected route
+function prefillWalkinRoute() {
+    const sel = document.getElementById('walkinRoute');
+    const opt = sel.options[sel.selectedIndex];
+    if (sel.value) {
+        document.getElementById('walkinBlock').value = opt.getAttribute('data-block') || '';
+        document.getElementById('walkinArea').value = opt.getAttribute('data-area') || '';
+        document.getElementById('walkinSalesman').value = opt.getAttribute('data-salesman') || '';
+    }
+}
+
 // Update customer info when customer is selected
 function updateCustomerInfo() {
     const selectedOption = customerSelect.options[customerSelect.selectedIndex];
     if(customerSelect.value) {
         const customerName = selectedOption.getAttribute('data-name');
         const customerMobile = selectedOption.getAttribute('data-mobile');
+        const customerRoute = selectedOption.getAttribute('data-route');
+        const customerBlock = selectedOption.getAttribute('data-block');
+        const customerArea = selectedOption.getAttribute('data-area');
+        const customerSalesman = selectedOption.getAttribute('data-salesman');
         displayCustomerName.innerText = customerName;
         displayCustomerMobile.innerText = 'Mobile: ' + customerMobile;
+        document.getElementById('displayRoute').innerText = customerRoute || '-';
+        document.getElementById('displayBlock').innerText = customerBlock || '-';
+        document.getElementById('displayArea').innerText = customerArea || '-';
+        document.getElementById('displaySalesman').innerText = customerSalesman || '-';
         selectedCustomerInfo.style.display = 'block';
     } else {
         selectedCustomerInfo.style.display = 'none';
@@ -528,7 +592,7 @@ function calculateTotal() {
 }
 
 function enableSubmit() {
-    const hasCustomer = customerSelect.value !== '';
+    const hasCustomer = isWalkin ? document.getElementById('walkinName').value.trim() !== '' : customerSelect.value !== '';
     const hasProduct = productSelect.value !== '';
     const hasBottles = parseInt(bottlesInput.value) > 0;
     const hasRate = parseFloat(bottleRateInput.value) > 0;
@@ -553,6 +617,9 @@ bottlesInput.addEventListener('change', function() {
 
 bottleRateInput.addEventListener('keyup', calculateTotal);
 bottleRateInput.addEventListener('change', calculateTotal);
+
+// Walk-in fields trigger enableSubmit
+document.getElementById('walkinName').addEventListener('keyup', enableSubmit);
 
 // Initialize
 calculateTotal();

@@ -43,11 +43,19 @@ if (mysqli_num_rows($suppliers_table_exists) == 0) {
     $total_credit = 0;
     $total_purchases = 0;
 } else {
+    // Search filter
+    $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
+    $where = " WHERE 1=1";
+    if ($search) {
+        $where .= " AND (s.supplier_name LIKE '%$search%' OR s.id LIKE '%$search%' OR s.mobile LIKE '%$search%' OR s.contact_person LIKE '%$search%')";
+    }
+
     // Get all suppliers
     $query = "SELECT s.*, 
               (SELECT COUNT(*) FROM raw_material_purchases WHERE supplier_id = s.id) as total_purchases,
               (SELECT COALESCE(SUM(total_amount), 0) FROM raw_material_purchases WHERE supplier_id = s.id) as total_purchase_amount
               FROM suppliers s 
+              $where
               ORDER BY s.supplier_name ASC";
     $result = mysqli_query($conn, $query);
     
@@ -145,9 +153,14 @@ if ($success) $message = "<div class='alert alert-success'>" . htmlspecialchars(
         <h2 class="page-heading mb-2 mb-sm-0">
             <i class="fas fa-truck me-2" style="color: #A04657;"></i> Suppliers
         </h2>
-        <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
-            <i class="fas fa-plus-circle me-2"></i> Add New Supplier
-        </button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+                <i class="fas fa-plus-circle me-2"></i> Add New Supplier
+            </button>
+            <button onclick="printSuppliers()" class="btn btn-outline-dark rounded-pill px-4">
+                <i class="fas fa-print me-2"></i> Print
+            </button>
+        </div>
     </div>
 
     <?php echo $message; ?>
@@ -192,6 +205,23 @@ if ($success) $message = "<div class='alert alert-success'>" . htmlspecialchars(
         </div>
     </div>
 
+    <!-- Search Filter Card -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body p-4">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-9">
+                    <label class="form-label fw-semibold"><i class="fas fa-search me-1"></i> Search by Name or ID</label>
+                    <input type="text" name="search" class="form-control" placeholder="Enter supplier name, ID, mobile..." value="<?php echo htmlspecialchars($search); ?>">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-secondary w-100 rounded-pill">
+                        <i class="fas fa-search me-2"></i> Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Suppliers Table Card -->
     <div class="card shadow-sm border-0 rounded-4">
         <div class="card-body p-0">
@@ -212,11 +242,10 @@ if ($success) $message = "<div class='alert alert-success'>" . htmlspecialchars(
                     </thead>
                     <tbody>
                         <?php if ($result && mysqli_num_rows($result) > 0): 
-                            $counter = 1;
                             while($row = mysqli_fetch_assoc($result)): 
                         ?>
                             <tr>
-                                <td class="text-center fw-semibold"><?php echo $counter++; ?></td>
+                                <td class="text-center fw-semibold"><?php echo $row['id']; ?></td>
                                 <td><strong><?php echo htmlspecialchars($row['supplier_name']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($row['contact_person'] ?? '-'); ?></td>
                                 <td><?php echo htmlspecialchars($row['mobile']); ?></td>
@@ -393,6 +422,245 @@ function confirmDelete(id, name) {
     $('#deleteSupplierName').text(name);
     $('#confirmDeleteBtn').attr('href', 'suppliers.php?delete=' + id);
     $('#deleteModal').modal('show');
+}
+</script>
+
+<!-- Print Overlay -->
+<div id="print-overlay">
+    <div id="print-area">
+        <div class="print-header">
+            <div class="print-brand-row">
+                <div class="print-logo-circle">
+                    <i class="fas fa-tint"></i>
+                </div>
+                <div class="print-brand-text">
+                    <div class="print-owner-name"><?php echo htmlspecialchars($owner_name); ?></div>
+                    <div class="print-company"><?php echo htmlspecialchars($company_name); ?></div>
+                    <div class="print-address"><?php echo htmlspecialchars($owner_address); ?></div>
+                    <div class="print-phone"><?php echo htmlspecialchars($owner_phone); ?></div>
+                </div>
+            </div>
+            <div class="print-divider"></div>
+            <div class="print-title-row">
+                <span class="print-doc-title">Suppliers List</span>
+            </div>
+        </div>
+
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width:40px;">#</th>
+                    <th>Supplier Name</th>
+                    <th>Contact Person</th>
+                    <th>Mobile</th>
+                    <th>Email</th>
+                    <th style="width:120px;" class="text-end">Balance (Rs)</th>
+                    <th style="width:120px;" class="text-end">Total Purchases (Rs)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                $print_query = "SELECT s.*, 
+                    (SELECT COUNT(*) FROM raw_material_purchases WHERE supplier_id = s.id) as total_purchases,
+                    (SELECT COALESCE(SUM(total_amount), 0) FROM raw_material_purchases WHERE supplier_id = s.id) as total_purchase_amount
+                    FROM suppliers s 
+                    ORDER BY s.supplier_name ASC";
+                $print_result = mysqli_query($conn, $print_query);
+                $sno = 1;
+                if($print_result && mysqli_num_rows($print_result) > 0):
+                    while($row = mysqli_fetch_assoc($print_result)): 
+                ?>
+                    <tr>
+                        <td><?php echo $sno++; ?></td>
+                        <td><strong><?php echo htmlspecialchars($row['supplier_name']); ?></strong></td>
+                        <td><?php echo htmlspecialchars($row['contact_person'] ?? '-'); ?></td>
+                        <td><?php echo htmlspecialchars($row['mobile']); ?></td>
+                        <td><?php echo htmlspecialchars($row['email'] ?? '-'); ?></td>
+                        <td class="text-end"><?php echo number_format($row['current_balance'], 2); ?></td>
+                        <td class="text-end"><?php echo number_format($row['total_purchase_amount'], 2); ?></td>
+                    </tr>
+                <?php endwhile; else: ?>
+                    <tr><td colspan="7" class="text-center" style="padding:40px;color:#999;">No suppliers found.</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+
+        <div class="print-footer">
+            Generated on: <?php echo date('d-m-Y h:i A'); ?>
+        </div>
+    </div>
+</div>
+
+<style>
+#print-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    z-index: 999999;
+    overflow: auto;
+}
+#print-area {
+    width: 794px;
+    margin: 0 auto;
+    padding: 35px 40px;
+    font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+    color: #222;
+}
+.print-header {
+    margin-bottom: 22px;
+}
+.print-brand-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+.print-logo-circle {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #A04657, #c96b7e);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #fff;
+    flex-shrink: 0;
+}
+.print-brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.print-company {
+    font-size: 18px;
+    font-weight: 700;
+    color: #A04657;
+    font-family: 'Quicksand', 'Segoe UI', Arial, sans-serif;
+}
+.print-owner-name {
+    font-size: 22px;
+    font-weight: 800;
+    color: #222;
+    font-family: 'Quicksand', 'Segoe UI', Arial, sans-serif;
+}
+.print-address {
+    font-size: 13px;
+    color: #666;
+}
+.print-phone {
+    font-size: 14px;
+    font-weight: 600;
+    color: #A04657;
+}
+.print-divider {
+    height: 2px;
+    background: linear-gradient(to right, #A04657, #e0a0ab);
+    margin: 14px 0 10px;
+    border-radius: 2px;
+}
+.print-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.print-doc-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #444;
+    font-family: 'Quicksand', 'Segoe UI', Arial, sans-serif;
+}
+.print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+.print-table th {
+    background: #A04657;
+    color: #fff;
+    padding: 10px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    text-align: left;
+}
+.print-table th.text-end,
+.print-table td.text-end {
+    text-align: right;
+}
+.print-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid #e6e6e6;
+    color: #333;
+}
+.print-table tbody tr:nth-child(even) {
+    background: #f9f9f9;
+}
+.print-table tbody tr:last-child td {
+    border-bottom: 2px solid #A04657;
+}
+.print-footer {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 11px;
+    color: #aaa;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+function printSuppliers() {
+    const overlay = document.getElementById('print-overlay');
+    const printArea = document.getElementById('print-area');
+    overlay.style.display = 'block';
+
+    setTimeout(function() {
+        html2canvas(printArea, {
+            scale: 3,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            width: printArea.scrollWidth,
+            height: printArea.scrollHeight
+        }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const w = window.open('', '_blank');
+            w.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Suppliers List</title>
+                    <style>
+                        @page { margin: 0; size: A4; }
+                        body { margin: 0; display: flex; justify-content: center; padding: 20px; }
+                        img { max-width: 100%; height: auto; }
+                    </style>
+                </head>
+                <body>
+                    <img src="${imgData}" />
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                                window.close();
+                            }, 300);
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `);
+            w.document.close();
+            overlay.style.display = 'none';
+        }).catch(err => {
+            console.error(err);
+            alert('Print failed. Please try again.');
+            overlay.style.display = 'none';
+        });
+    }, 200);
 }
 </script>
 
