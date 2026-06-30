@@ -62,6 +62,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_route'])) {
     vertical-align: middle;
     font-size: 13px;
 }
+.route-table .btn-xs {
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1.3;
+    border-radius: 6px;
+}
 </style>
 
 <div class="main-wrapper">
@@ -98,8 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_route'])) {
                     <input type="text" name="route_salesman" class="form-control" placeholder="Salesman">
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" name="add_route" class="btn btn-primary w-100 rounded-pill">
-                        <i class="fas fa-plus me-2"></i> Add Route
+                    <button type="submit" name="add_route" class="btn btn-primary w-100" style="height: 46px; border-radius: 8px;">
+                        Add Route
                     </button>
                 </div>
             </form>
@@ -136,8 +142,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_route'])) {
                                 <td><?php echo htmlspecialchars($rt['block'] ?? '-'); ?></td>
                                 <td><?php echo htmlspecialchars($rt['area'] ?? '-'); ?></td>
                                 <td><?php echo htmlspecialchars($rt['salesman'] ?? '-'); ?></td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-warning editRouteBtn" 
+                                <td class="text-nowrap" style="width: 90px;">
+                                    <button type="button" class="btn btn-xs btn-warning editRouteBtn" 
                                         data-id="<?php echo $rt['id']; ?>"
                                         data-name="<?php echo htmlspecialchars($rt['route_name']); ?>"
                                         data-block="<?php echo htmlspecialchars($rt['block'] ?? ''); ?>"
@@ -145,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_route'])) {
                                         data-salesman="<?php echo htmlspecialchars($rt['salesman'] ?? ''); ?>">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <a href="?delete_route=<?php echo $rt['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete this route?')">
+                                    <a href="?delete_route=<?php echo $rt['id']; ?>" class="btn btn-xs btn-danger" onclick="return confirm('Delete this route?')">
                                         <i class="fas fa-trash"></i>
                                     </a>
                                 </td>

@@ -313,22 +313,8 @@ $products_stock = mysqli_query($conn, "SELECT id, product_name, current_stock, m
                         <!-- Existing Customer Selection -->
                         <div class="mb-3" id="existingCustomerSection">
                             <label class="form-label"><i class="fas fa-user me-1"></i> Select Customer <span class="text-danger">*</span></label>
-                            <select name="customer_id" id="customerId" class="form-select" onchange="updateCustomerInfo()">
-                                <option value="">-- Select Customer --</option>
-                                <?php 
-                                mysqli_data_seek($customers_list, 0);
-                                while($c = mysqli_fetch_assoc($customers_list)): ?>
-                                    <option value="<?php echo $c['id']; ?>" 
-                                            data-name="<?php echo htmlspecialchars($c['customer_name']); ?>" 
-                                            data-mobile="<?php echo $c['mobile']; ?>"
-                                            data-route="<?php echo htmlspecialchars($c['route_name'] ?? ''); ?>"
-                                            data-block="<?php echo htmlspecialchars($c['block'] ?? ''); ?>"
-                                            data-area="<?php echo htmlspecialchars($c['area'] ?? ''); ?>"
-                                            data-salesman="<?php echo htmlspecialchars($c['salesman'] ?? ''); ?>">
-                                        <?php echo htmlspecialchars($c['customer_name']); ?> - <?php echo $c['mobile']; ?>
-                                    </option>
-                                <?php endwhile; ?>
-                            </select>
+                            <input type="text" id="customerAutocomplete" class="form-control" placeholder="Type customer name or mobile..." autocomplete="off">
+                            <input type="hidden" name="customer_id" id="customerId">
                             <div id="selectedCustomerInfo" class="selected-customer-info" style="display: none;">
                                 <i class="fas fa-user-check me-1 text-success"></i>
                                 Customer: <strong id="displayCustomerName"></strong>
@@ -455,11 +441,54 @@ $products_stock = mysqli_query($conn, "SELECT id, product_name, current_stock, m
 </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+.ui-autocomplete {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-size: 14px;
+    border-radius: 8px;
+}
+.ui-menu-item {
+    padding: 6px 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.ui-menu-item .ui-menu-item-wrapper {
+    padding: 4px 8px;
+}
+.ui-state-active {
+    background: #A04657 !important;
+    border-color: #A04657 !important;
+    margin: 0;
+}
+</style>
+
+<?php
+// Build customers JS array for autocomplete
+$cust_js = [];
+mysqli_data_seek($customers_list, 0);
+while($c = mysqli_fetch_assoc($customers_list)){
+    $cust_js[] = [
+        'id' => $c['id'],
+        'name' => htmlspecialchars($c['customer_name'], ENT_QUOTES),
+        'mobile' => htmlspecialchars($c['mobile'] ?? '', ENT_QUOTES),
+        'route' => htmlspecialchars($c['route_name'] ?? '', ENT_QUOTES),
+        'block' => htmlspecialchars($c['block'] ?? '', ENT_QUOTES),
+        'area' => htmlspecialchars($c['area'] ?? '', ENT_QUOTES),
+        'salesman' => htmlspecialchars($c['salesman'] ?? '', ENT_QUOTES),
+    ];
+}
+?>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 <script>
+var customers = <?php echo json_encode($cust_js); ?>;
+
 // DOM Elements
 let isWalkin = false;
-const customerSelect = document.getElementById('customerId');
+const customerInput = document.getElementById('customerAutocomplete');
+const customerHidden = document.getElementById('customerId');
 const selectedCustomerInfo = document.getElementById('selectedCustomerInfo');
 const displayCustomerName = document.getElementById('displayCustomerName');
 const displayCustomerMobile = document.getElementById('displayCustomerMobile');
@@ -473,8 +502,39 @@ const stockHint = document.getElementById('stockHint');
 const productInfo = document.getElementById('productInfo');
 const productStockInfo = document.getElementById('productStockInfo');
 
+let selectedCustomer = null;
 let currentProductStock = 0;
 let currentProductPrice = 0;
+
+// Autocomplete initialization
+$(function() {
+    $("#customerAutocomplete").autocomplete({
+        source: function(request, response) {
+            var term = request.term.toLowerCase();
+            var results = $.grep(customers, function(c) {
+                return c.name.toLowerCase().indexOf(term) === 0 || c.mobile.indexOf(term) === 0;
+            });
+            response(results.slice(0, 20));
+        },
+        minLength: 1,
+        select: function(event, ui) {
+            selectedCustomer = ui.item;
+            customerHidden.value = ui.item.id;
+            customerInput.value = ui.item.name;
+            updateCustomerInfo();
+            return false;
+        },
+        search: function() {
+            selectedCustomer = null;
+            customerHidden.value = '';
+            selectedCustomerInfo.style.display = 'none';
+        }
+    }).data("ui-autocomplete")._renderItem = function(ul, item) {
+        return $("<li>")
+            .append("<div><strong>" + item.name + "</strong><br><small style='color:#666;'>" + item.mobile + " | " + item.route + " | " + item.block + "</small></div>")
+            .appendTo(ul);
+    };
+});
 
 // Toggle between walk-in and existing customer
 function toggleWalkin() {
@@ -482,12 +542,11 @@ function toggleWalkin() {
     document.getElementById('existingCustomerSection').style.display = isWalkin ? 'none' : 'block';
     document.getElementById('walkinSection').style.display = isWalkin ? 'block' : 'none';
     if (isWalkin) {
-        customerSelect.value = 'new';
-        customerSelect.removeAttribute('required');
+        customerHidden.value = 'new';
         selectedCustomerInfo.style.display = 'none';
+        selectedCustomer = null;
     } else {
-        customerSelect.value = '';
-        customerSelect.setAttribute('required', 'required');
+        customerHidden.value = selectedCustomer ? selectedCustomer.id : '';
     }
     enableSubmit();
 }
@@ -500,29 +559,35 @@ function prefillWalkinRoute() {
         document.getElementById('walkinBlock').value = opt.getAttribute('data-block') || '';
         document.getElementById('walkinArea').value = opt.getAttribute('data-area') || '';
         document.getElementById('walkinSalesman').value = opt.getAttribute('data-salesman') || '';
+    } else {
+        document.getElementById('walkinBlock').value = '';
+        document.getElementById('walkinArea').value = '';
+        document.getElementById('walkinSalesman').value = '';
     }
 }
 
 // Update customer info when customer is selected
 function updateCustomerInfo() {
-    const selectedOption = customerSelect.options[customerSelect.selectedIndex];
-    if(customerSelect.value) {
-        const customerName = selectedOption.getAttribute('data-name');
-        const customerMobile = selectedOption.getAttribute('data-mobile');
-        const customerRoute = selectedOption.getAttribute('data-route');
-        const customerBlock = selectedOption.getAttribute('data-block');
-        const customerArea = selectedOption.getAttribute('data-area');
-        const customerSalesman = selectedOption.getAttribute('data-salesman');
-        displayCustomerName.innerText = customerName;
-        displayCustomerMobile.innerText = 'Mobile: ' + customerMobile;
-        document.getElementById('displayRoute').innerText = customerRoute || '-';
-        document.getElementById('displayBlock').innerText = customerBlock || '-';
-        document.getElementById('displayArea').innerText = customerArea || '-';
-        document.getElementById('displaySalesman').innerText = customerSalesman || '-';
+    if(selectedCustomer) {
+        displayCustomerName.innerText = selectedCustomer.name;
+        displayCustomerMobile.innerText = 'Mobile: ' + selectedCustomer.mobile;
+        document.getElementById('displayRoute').innerText = selectedCustomer.route || '-';
+        document.getElementById('displayBlock').innerText = selectedCustomer.block || '-';
+        document.getElementById('displayArea').innerText = selectedCustomer.area || '-';
+        document.getElementById('displaySalesman').innerText = selectedCustomer.salesman || '-';
         selectedCustomerInfo.style.display = 'block';
     } else {
         selectedCustomerInfo.style.display = 'none';
     }
+    enableSubmit();
+}
+
+// Clear customer selection
+function clearCustomer() {
+    selectedCustomer = null;
+    customerHidden.value = '';
+    customerInput.value = '';
+    selectedCustomerInfo.style.display = 'none';
     enableSubmit();
 }
 
@@ -592,7 +657,7 @@ function calculateTotal() {
 }
 
 function enableSubmit() {
-    const hasCustomer = isWalkin ? document.getElementById('walkinName').value.trim() !== '' : customerSelect.value !== '';
+    const hasCustomer = isWalkin ? document.getElementById('walkinName').value.trim() !== '' : customerHidden.value !== '';
     const hasProduct = productSelect.value !== '';
     const hasBottles = parseInt(bottlesInput.value) > 0;
     const hasRate = parseFloat(bottleRateInput.value) > 0;
@@ -601,11 +666,6 @@ function enableSubmit() {
 }
 
 // Event Listeners
-customerSelect.addEventListener('change', function() {
-    updateCustomerInfo();
-    enableSubmit();
-});
-
 bottlesInput.addEventListener('keyup', function() {
     calculateTotal();
     validateStock();

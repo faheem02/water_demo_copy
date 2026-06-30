@@ -313,6 +313,11 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Admini
                         <i class="fas fa-eye"></i> View Customer
                     </a>
                 </li>
+                <li>
+                    <a href="<?php echo $base_url; ?>pages/ledger.php">
+                        <i class="fas fa-book"></i> Customer Ledger
+                    </a>
+                </li>
             </ul>
         </li>
 
@@ -341,7 +346,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Admini
         <li>
             <a href="<?php echo $base_url; ?>pages/empty_bottle_return.php">
                 <i class="fas fa-undo-alt"></i>
-                <span>Empty Bottle Return</span>
+                <span>Bottle Tracking</span>
             </a>
         </li>
 
@@ -353,21 +358,6 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Admini
             </a>
         </li>
 
-        <!-- LEDGER -->
-        <li>
-            <a href="<?php echo $base_url; ?>pages/ledger.php">
-                <i class="fas fa-book"></i>
-                <span>Customer Ledger</span>
-            </a>
-        </li>
-
-        <!-- BOTTLE TRACKING -->
-        <li>
-            <a href="<?php echo $base_url; ?>pages/bottle_tracking.php">
-                <i class="fas fa-bottle-water"></i>
-                <span>Bottle Tracking</span>
-            </a>
-        </li>
 
         <!-- PRODUCT STOCK -->
         <li>

@@ -72,12 +72,18 @@ if (isset($_GET['msg']) && $_GET['msg'] == 'deleted') $message = "<div class='al
 // ---- Fetch customers with search and date filter ----
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
 $route_filter = isset($_GET['route_filter']) ? intval($_GET['route_filter']) : 0;
+$block_filter = isset($_GET['block_filter']) ? mysqli_real_escape_string($conn, $_GET['block_filter']) : '';
+$area_filter = isset($_GET['area_filter']) ? mysqli_real_escape_string($conn, $_GET['area_filter']) : '';
+$salesman_filter = isset($_GET['salesman_filter']) ? mysqli_real_escape_string($conn, $_GET['salesman_filter']) : '';
 $from_date = isset($_GET['from_date']) ? $_GET['from_date'] : '';
 $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : '';
 
 $where = " WHERE 1=1";
 if ($search) $where .= " AND (c.customer_name LIKE '%$search%' OR c.mobile LIKE '%$search%' OR c.id LIKE '%$search%')";
 if ($route_filter) $where .= " AND c.route_id = $route_filter";
+if ($block_filter) $where .= " AND c.block LIKE '%$block_filter%'";
+if ($area_filter) $where .= " AND c.area LIKE '%$area_filter%'";
+if ($salesman_filter) $where .= " AND c.salesman LIKE '%$salesman_filter%'";
 if ($from_date) $where .= " AND DATE(c.created_datetime) >= '$from_date'";
 if ($to_date) $where .= " AND DATE(c.created_datetime) <= '$to_date'";
 
@@ -221,7 +227,7 @@ $stats = mysqli_fetch_assoc($stats_query);
                     <input type="text" name="search" class="form-control" placeholder="Enter name, ID, mobile..." value="<?php echo htmlspecialchars($search); ?>">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-semibold"><i class="fas fa-route me-1"></i> Filter by Route</label>
+                    <label class="form-label fw-semibold"><i class="fas fa-route me-1"></i> Route</label>
                     <select name="route_filter" class="form-select">
                         <option value="0">All Routes</option>
                         <?php 
@@ -236,6 +242,18 @@ $stats = mysqli_fetch_assoc($stats_query);
                     </select>
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label fw-semibold"><i class="fas fa-cube me-1"></i> Block</label>
+                    <input type="text" name="block_filter" class="form-control" placeholder="Block" value="<?php echo htmlspecialchars($block_filter); ?>">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold"><i class="fas fa-map-marker-alt me-1"></i> Area</label>
+                    <input type="text" name="area_filter" class="form-control" placeholder="Area" value="<?php echo htmlspecialchars($area_filter); ?>">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold"><i class="fas fa-user-tie me-1"></i> Salesman</label>
+                    <input type="text" name="salesman_filter" class="form-control" placeholder="Salesman" value="<?php echo htmlspecialchars($salesman_filter); ?>">
+                </div>
+                <div class="col-md-2">
                     <label class="form-label fw-semibold"><i class="fas fa-calendar me-1"></i> From Date</label>
                     <input type="date" name="from_date" class="form-control" value="<?php echo $from_date; ?>">
                 </div>
@@ -243,10 +261,13 @@ $stats = mysqli_fetch_assoc($stats_query);
                     <label class="form-label fw-semibold"><i class="fas fa-calendar me-1"></i> To Date</label>
                     <input type="date" name="to_date" class="form-control" value="<?php echo $to_date; ?>">
                 </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-secondary w-100 rounded-pill">
+                <div class="col-md-3 d-flex gap-2 align-items-end">
+                    <button type="submit" class="btn btn-secondary flex-fill" style="height: 46px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
                         <i class="fas fa-search me-2"></i> Search
                     </button>
+                    <a href="customer_view.php" class="btn btn-outline-secondary flex-fill" style="height: 46px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-undo me-1"></i> Reset
+                    </a>
                 </div>
             </form>
         </div>
