@@ -187,8 +187,8 @@ $month_total = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COALESCE(SUM(payme
                         <!-- Customer Selection with Search -->
                         <div class="mb-3">
                             <label class="form-label"><i class="fas fa-user me-1"></i> Select Customer <span class="text-danger">*</span></label>
-                            <div class="search-box">
-                                <i class="fas fa-search"></i>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
                                 <input type="text" id="customerSearch" class="form-control" placeholder="Search customer by name or mobile..." autocomplete="off">
                             </div>
                             <select name="customer_id" id="customerId" class="form-select mt-2" required style="display:none;">

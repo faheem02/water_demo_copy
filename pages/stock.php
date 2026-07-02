@@ -198,16 +198,9 @@ $month_out = ($month_out_query && mysqli_num_rows($month_out_query) > 0) ? mysql
             <i class="fas fa-boxes me-2" style="color: #A04657;"></i> Stock Management
         </h2>
         <div class="d-flex gap-2">
-            <div class="btn-group">
-                <button class="btn btn-outline-dark rounded-start-pill px-4" onclick="printStock()">
-                    <i class="fas fa-eye me-2"></i> Report View
-                </button>
-                <button class="btn btn-outline-dark dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#" onclick="downloadStock()"><i class="fas fa-download me-2"></i> Download CSV</a></li>
-                </ul>
-            </div>
+            <button class="btn btn-outline-dark rounded-pill px-4" onclick="printStock()">
+                <i class="fas fa-print me-2"></i> Print
+            </button>
             <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addStockInModal">
                 <i class="fas fa-arrow-down me-2"></i> Production
             </button>
@@ -219,6 +212,7 @@ $month_out = ($month_out_query && mysqli_num_rows($month_out_query) > 0) ? mysql
             </button>
         </div>
     </div>
+
 
     <?php if($success): ?>
         <div class="alert alert-success alert-dismissible fade show rounded-4"><?php echo $success; ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
