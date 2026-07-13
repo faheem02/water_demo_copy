@@ -123,7 +123,11 @@ $payments_result = mysqli_query($conn, $payments_query);
                 Invoice #<?php echo htmlspecialchars($purchase['invoice_no'] ?? 'N/A'); ?>
             </p>
         </div>
+<<<<<<< HEAD
         <div class="d-flex gap-2">
+=======
+         <div class="d-flex gap-2">
+>>>>>>> 822b3970b8ba4fb65fc5798e403232c42cbe8bb7
             <button onclick="window.print()" class="btn btn-outline-dark rounded-pill px-4">
                 <i class="fas fa-print me-2"></i> Print
             </button>

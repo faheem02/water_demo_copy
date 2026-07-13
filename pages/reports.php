@@ -464,7 +464,11 @@ $routes = mysqli_query($conn, "SELECT * FROM routes ORDER BY route_name");
         </div>
     </div>
 
+<<<<<<< HEAD
     <!-- Print Button -->
+=======
+  <!-- Print Button -->
+>>>>>>> 822b3970b8ba4fb65fc5798e403232c42cbe8bb7
     <div class="row mt-4">
         <div class="col-12 text-end">
             <button onclick="window.print()" class="btn btn-outline-dark rounded-pill px-4">

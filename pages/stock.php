@@ -213,6 +213,7 @@ $month_out = ($month_out_query && mysqli_num_rows($month_out_query) > 0) ? mysql
         </div>
     </div>
 
+
     <?php if($success): ?>
         <div class="alert alert-success alert-dismissible fade show rounded-4"><?php echo $success; ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     <?php endif; ?>

@@ -17,7 +17,8 @@ if ($salesman) $where .= " AND (c.salesman LIKE '%$salesman%' OR r.salesman LIKE
 if ($from_date) $where .= " AND DATE(d.delivery_datetime) >= '$from_date'";
 if ($to_date) $where .= " AND DATE(d.delivery_datetime) <= '$to_date'";
 
-$query = "SELECT d.*, p.product_name, c.customer_name, c.mobile, c.block as cust_block, c.area as cust_area, c.salesman as cust_salesman, r.route_name, r.block as route_block, r.area as route_area, r.salesman as route_salesman 
+$query = "SELECT d.*, p.product_name, c.customer_name, c.mobile, c.block as cust_block, c.area as cust_area, c.salesman as cust_salesman, r.route_name, r.block as route_block, r.area as route_area, r.salesman as route_salesman,
+                 COALESCE((SELECT SUM(cl.credit_amount) FROM customer_ledger cl WHERE cl.reference_id = d.id AND cl.reference_type = 'payment'), 0) as cash_received
           FROM water_deliveries d 
           LEFT JOIN customers c ON d.customer_id = c.id 
           LEFT JOIN products p ON d.product_id = p.id 
@@ -34,6 +35,21 @@ $summary_query = "SELECT COUNT(*) as total_deliveries, COALESCE(SUM(d.bottles_de
                   LEFT JOIN routes r ON c.route_id = r.id 
                   $where";
 $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
+
+// Total cash received summary
+$cash_query = "SELECT COALESCE(SUM(cl.credit_amount),0) as total_cash_received 
+               FROM customer_ledger cl 
+               INNER JOIN water_deliveries d ON cl.reference_id = d.id 
+               LEFT JOIN customers c ON d.customer_id = c.id 
+               LEFT JOIN routes r ON c.route_id = r.id 
+               WHERE cl.reference_type = 'payment'";
+if ($route_name) $cash_query .= " AND r.route_name LIKE '%$route_name%'";
+if ($block) $cash_query .= " AND (c.block LIKE '%$block%' OR r.block LIKE '%$block%')";
+if ($area) $cash_query .= " AND (c.area LIKE '%$area%' OR r.area LIKE '%$area%')";
+if ($salesman) $cash_query .= " AND (c.salesman LIKE '%$salesman%' OR r.salesman LIKE '%$salesman%')";
+if ($from_date) $cash_query .= " AND DATE(d.delivery_datetime) >= '$from_date'";
+if ($to_date) $cash_query .= " AND DATE(d.delivery_datetime) <= '$to_date'";
+$total_cash_received = mysqli_fetch_assoc(mysqli_query($conn, $cash_query))['total_cash_received'];
 ?>
 <?php include '../includes/header.php'; ?>
 <?php include '../includes/sidebar.php'; ?>
@@ -118,6 +134,7 @@ $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
         <div><strong>Total Deliveries:</strong> <span class="badge bg-primary rounded-pill"><?php echo number_format($summary['total_deliveries']); ?></span></div>
         <div><strong>Total Bottles:</strong> <span class="badge bg-info rounded-pill"><?php echo number_format($summary['total_bottles']); ?></span></div>
         <div><strong>Total Amount:</strong> <span class="badge bg-success rounded-pill">Rs <?php echo number_format($summary['total_amount'], 2); ?></span></div>
+        <div><strong>Total Cash Received:</strong> <span class="badge bg-warning rounded-pill">Rs <?php echo number_format($total_cash_received, 2); ?></span></div>
     </div>
 
     <!-- Deliveries Table -->
@@ -139,6 +156,7 @@ $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
                             <th style="width:70px" class="text-center">Empty</th>
                             <th style="width:90px" class="text-end">Rate</th>
                             <th style="width:110px" class="text-end">Total (Rs)</th>
+                            <th style="width:110px" class="text-end">Cash Received</th>
                             <th style="width:130px">Date</th>
                             <th>Notes</th>
                         </tr>
@@ -163,13 +181,14 @@ $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
                                 <td class="text-center"><?php echo $d['empty_bottles_returned']; ?></td>
                                 <td class="text-end"><?php echo number_format($d['bottle_rate'], 2); ?></td>
                                 <td class="text-end fw-bold text-success">Rs <?php echo number_format($d['total_amount'], 2); ?></td>
+                                <td class="text-end fw-semibold" style="color: #e67e22;">Rs <?php echo number_format($d['cash_received'], 2); ?></td>
                                 <td><?php echo date('d/m/y h:i A', strtotime($d['delivery_datetime'])); ?></td>
                                 <td><small class="text-muted"><?php echo htmlspecialchars($d['notes'] ?? '-'); ?></small></td>
                             </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="14" class="text-center py-5 text-muted">
+                                <td colspan="15" class="text-center py-5 text-muted">
                                     <i class="fas fa-truck fa-3x mb-3 d-block opacity-25"></i>
                                     No deliveries found.
                                 </td>
@@ -228,6 +247,7 @@ $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
                     <th>Product</th>
                     <th style="width:70px;" class="text-end">Bottles</th>
                     <th style="width:100px;" class="text-end">Total (Rs)</th>
+                    <th style="width:100px;" class="text-end">Cash Received</th>
                     <th style="width:90px;">Date</th>
                 </tr>
             </thead>
@@ -237,10 +257,12 @@ $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
                 $sno = 1;
                 $print_bottles = 0;
                 $print_amount = 0;
+                $print_cash = 0;
                 if($print_result && mysqli_num_rows($print_result) > 0):
                     while($d = mysqli_fetch_assoc($print_result)):
                         $print_bottles += $d['bottles_delivered'];
                         $print_amount += $d['total_amount'];
+                        $print_cash += $d['cash_received'];
                         $display_block = $d['cust_block'] ?: $d['route_block'] ?: '-';
                 ?>
                     <tr>
@@ -252,6 +274,7 @@ $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
                         <td><?php echo htmlspecialchars($d['product_name'] ?? 'N/A'); ?></td>
                         <td class="text-end"><?php echo $d['bottles_delivered']; ?></td>
                         <td class="text-end"><?php echo number_format($d['total_amount'], 2); ?></td>
+                        <td class="text-end">Rs <?php echo number_format($d['cash_received'], 2); ?></td>
                         <td><?php echo date('d/m/y', strtotime($d['delivery_datetime'])); ?></td>
                     </tr>
                 <?php endwhile; ?>
@@ -259,10 +282,11 @@ $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
                         <td colspan="6" class="text-end">Total</td>
                         <td class="text-end"><?php echo $print_bottles; ?></td>
                         <td class="text-end">Rs <?php echo number_format($print_amount, 2); ?></td>
+                        <td class="text-end">Rs <?php echo number_format($print_cash, 2); ?></td>
                         <td></td>
                     </tr>
                 <?php else: ?>
-                    <tr><td colspan="9" class="text-center" style="padding:40px;color:#999;">No deliveries found.</td></tr>
+                    <tr><td colspan="10" class="text-center" style="padding:40px;color:#999;">No deliveries found.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
