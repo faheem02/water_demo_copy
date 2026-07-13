@@ -132,7 +132,7 @@ $summary = mysqli_fetch_assoc($summary_result);
             <p class="text-muted mb-0">Complete inventory status and stock analysis with pricing</p>
         </div>
         <div class="no-print">
-            <button onclick="window.print()" class="btn btn-secondary rounded-pill px-4 me-2">
+            <button onclick="window.print()" class="btn btn-outline-dark rounded-pill px-4 me-2">
                 <i class="fas fa-print me-2"></i> Print
             </button>
             <button onclick="exportToExcel()" class="btn btn-success rounded-pill px-4">

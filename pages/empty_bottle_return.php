@@ -43,7 +43,7 @@ if($customer_id && $tracking && mysqli_num_rows($tracking) > 0) {
     while($t = mysqli_fetch_assoc($tracking)) {
         $total_delivered += $t['bottles_delivered'];
         $total_returned += $t['bottles_returned'];
-        $total_broken += $t['bottles_broken'];
+        $total_broken += $t['bottles_broken'] ?? 0;
     }
     mysqli_data_seek($tracking, 0);
 }
@@ -344,9 +344,9 @@ if($customer_id && $tracking && mysqli_num_rows($tracking) > 0) {
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-center">
-                                            <?php if($t['bottles_broken'] > 0): ?>
+                                            <?php if(($t['bottles_broken'] ?? 0) > 0): ?>
                                                 <span class="badge bg-danger bg-opacity-10 text-danger px-2 py-1 rounded-pill">
-                                                    <i class="fas fa-wine-bottle"></i> <?php echo $t['bottles_broken']; ?>
+                                                    <i class="fas fa-wine-bottle"></i> <?php echo $t['bottles_broken'] ?? 0; ?>
                                                 </span>
                                             <?php else: ?>
                                                 <span class="text-muted">—</span>
@@ -360,8 +360,8 @@ if($customer_id && $tracking && mysqli_num_rows($tracking) > 0) {
                                             if($t['bottles_returned'] > 0) {
                                                 $running_empty = $running_empty + $t['bottles_returned'];
                                             }
-                                            if($t['bottles_broken'] > 0) {
-                                                $running_empty = $running_empty - $t['bottles_broken'];
+                                            if(($t['bottles_broken'] ?? 0) > 0) {
+                                                $running_empty = $running_empty - ($t['bottles_broken'] ?? 0);
                                             }
                                             ?>
                                             <strong class="<?php echo $running_empty < 0 ? 'text-danger' : 'text-primary'; ?>">
@@ -371,11 +371,12 @@ if($customer_id && $tracking && mysqli_num_rows($tracking) > 0) {
                                         <td>
                                             <small class="text-muted">
                                                 <?php 
+                                                $ref_type = $t['reference_type'] ?? '';
                                                 if($t['notes']) {
                                                     echo htmlspecialchars($t['notes']);
-                                                } elseif($t['reference_type'] == 'return_only') {
+                                                } elseif($ref_type == 'return_only') {
                                                     echo '<span class="text-info">Empty bottle return only</span>';
-                                                } elseif($t['reference_type'] == 'delivery') {
+                                                } elseif($ref_type == 'delivery') {
                                                     echo '<span class="text-primary">Water delivery</span>';
                                                 } else {
                                                     echo '—';

@@ -6,8 +6,8 @@ if(!$conn){
 }
 
 $software_name = "Water Supply System";
-$company_name = "I Pure Drinking Water";
-$owner_name = "Muhammad Usman";
-$owner_address = "House no 99 C block Gulshan iqbal Faisalabad";
-$owner_phone = "03007769500";
+$company_name = "Aquize Water";
+$owner_name = "Fawaz Javid";
+$owner_address = "Shop no.1 J2 market Wapdatown Lahore";
+$owner_phone = "03084334856";
 ?>

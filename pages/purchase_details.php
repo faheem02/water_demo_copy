@@ -124,7 +124,7 @@ $payments_result = mysqli_query($conn, $payments_query);
             </p>
         </div>
         <div class="d-flex gap-2">
-            <button onclick="window.print()" class="btn btn-secondary rounded-pill px-4">
+            <button onclick="window.print()" class="btn btn-outline-dark rounded-pill px-4">
                 <i class="fas fa-print me-2"></i> Print
             </button>
             <a href="purchase_list.php" class="btn btn-secondary rounded-pill px-4">

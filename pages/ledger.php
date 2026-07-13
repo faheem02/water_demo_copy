@@ -373,8 +373,8 @@ if($customer_id && $ledger) {
 
         <!-- Print Button -->
         <div class="mt-4 text-end">
-            <button onclick="printLedger()" class="btn btn-outline-secondary rounded-pill px-4">
-                <i class="fas fa-print me-2"></i> Print Ledger
+            <button onclick="printLedger()" class="btn btn-outline-dark rounded-pill px-4">
+                <i class="fas fa-print me-2"></i> Print
             </button>
         </div>
 

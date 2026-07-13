@@ -71,13 +71,11 @@ if (isset($_GET['msg']) && $_GET['msg'] == 'deleted') $message = "<div class='al
 
 // ---- Fetch customers with search and date filter ----
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
-$route_filter = isset($_GET['route_filter']) ? intval($_GET['route_filter']) : 0;
 $from_date = isset($_GET['from_date']) ? $_GET['from_date'] : '';
 $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : '';
 
 $where = " WHERE 1=1";
-if ($search) $where .= " AND (c.customer_name LIKE '%$search%' OR c.mobile LIKE '%$search%' OR c.id LIKE '%$search%')";
-if ($route_filter) $where .= " AND c.route_id = $route_filter";
+if ($search) $where .= " AND (c.customer_name LIKE '%$search%' OR c.mobile LIKE '%$search%' OR c.id LIKE '%$search%' OR r.route_name LIKE '%$search%' OR c.block LIKE '%$search%' OR c.area LIKE '%$search%' OR c.salesman LIKE '%$search%')";
 if ($from_date) $where .= " AND DATE(c.created_datetime) >= '$from_date'";
 if ($to_date) $where .= " AND DATE(c.created_datetime) <= '$to_date'";
 
@@ -216,24 +214,9 @@ $stats = mysqli_fetch_assoc($stats_query);
     <div class="card shadow-sm border-0 rounded-4 mb-4 no-print">
         <div class="card-body p-4">
             <form method="GET" class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold"><i class="fas fa-search me-1"></i> Search by Name or ID</label>
-                    <input type="text" name="search" class="form-control" placeholder="Enter name, ID, mobile..." value="<?php echo htmlspecialchars($search); ?>">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-semibold"><i class="fas fa-route me-1"></i> Filter by Route</label>
-                    <select name="route_filter" class="form-select">
-                        <option value="0">All Routes</option>
-                        <?php 
-                        $routes_filter = mysqli_query($conn, "SELECT * FROM routes ORDER BY route_name");
-                        if($routes_filter){
-                            while($rt = mysqli_fetch_assoc($routes_filter)) { 
-                                $selected = ($route_filter == $rt['id']) ? 'selected' : '';
-                                echo "<option value='{$rt['id']}' $selected>" . htmlspecialchars($rt['route_name']) . "</option>";
-                            } 
-                        }
-                        ?>
-                    </select>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold"><i class="fas fa-search me-1"></i> Search</label>
+                    <input type="text" name="search" class="form-control" placeholder="Name, ID, mobile, route, block, area, salesman..." value="<?php echo htmlspecialchars($search); ?>">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fw-semibold"><i class="fas fa-calendar me-1"></i> From Date</label>
@@ -243,10 +226,13 @@ $stats = mysqli_fetch_assoc($stats_query);
                     <label class="form-label fw-semibold"><i class="fas fa-calendar me-1"></i> To Date</label>
                     <input type="date" name="to_date" class="form-control" value="<?php echo $to_date; ?>">
                 </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-secondary w-100 rounded-pill">
+                <div class="col-md-4 d-flex gap-2 align-items-end">
+                    <button type="submit" class="btn btn-secondary flex-fill" style="height: 46px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
                         <i class="fas fa-search me-2"></i> Search
                     </button>
+                    <a href="customer_view.php" class="btn btn-outline-secondary flex-fill" style="height: 46px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-undo me-1"></i> Reset
+                    </a>
                 </div>
             </form>
         </div>

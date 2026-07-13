@@ -197,11 +197,14 @@ $month_out = ($month_out_query && mysqli_num_rows($month_out_query) > 0) ? mysql
         <h2 class="page-heading mb-2 mb-sm-0">
             <i class="fas fa-boxes me-2" style="color: #A04657;"></i> Stock Management
         </h2>
-        <div>
-            <button class="btn btn-primary rounded-pill px-4 me-2" data-bs-toggle="modal" data-bs-target="#addStockInModal">
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-dark rounded-pill px-4" onclick="printStock()">
+                <i class="fas fa-print me-2"></i> Print
+            </button>
+            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addStockInModal">
                 <i class="fas fa-arrow-down me-2"></i> Production
             </button>
-            <button class="btn btn-warning rounded-pill px-4 me-2" data-bs-toggle="modal" data-bs-target="#adjustStockModal">
+            <button class="btn btn-warning rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#adjustStockModal">
                 <i class="fas fa-sliders-h me-2"></i> Adjust Stock
             </button>
             <button class="btn btn-success rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addProductModal">
@@ -216,38 +219,6 @@ $month_out = ($month_out_query && mysqli_num_rows($month_out_query) > 0) ? mysql
     <?php if($error): ?>
         <div class="alert alert-danger alert-dismissible fade show rounded-4"><?php echo $error; ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     <?php endif; ?>
-
-    <!-- Summary Cards -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-3">
-            <div class="summary-card total">
-                <i class="fas fa-boxes fa-2x mb-2 opacity-50"></i>
-                <h6>Total Stock</h6>
-                <h2 class="mb-0"><?php echo number_format($total_stock); ?> Bottles</h2>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="summary-card low">
-                <i class="fas fa-exclamation-triangle fa-2x mb-2 opacity-50"></i>
-                <h6>Low Stock Items</h6>
-                <h2 class="mb-0"><?php echo $low_stock_count; ?></h2>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="summary-card in">
-                <i class="fas fa-arrow-down fa-2x mb-2 opacity-50"></i>
-                <h6>Production (This Month)</h6>
-                <h2 class="mb-0"><?php echo number_format($month_in); ?></h2>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="summary-card out">
-                <i class="fas fa-arrow-up fa-2x mb-2 opacity-50"></i>
-                <h6>Stock Out (This Month)</h6>
-                <h2 class="mb-0"><?php echo number_format($month_out); ?></h2>
-            </div>
-        </div>
-    </div>
 
     <!-- Products Stock Table -->
     <div class="card stock-card mb-4">
@@ -413,6 +384,176 @@ $month_out = ($month_out_query && mysqli_num_rows($month_out_query) > 0) ? mysql
 </div>
 </div>
 
+<!-- Print Overlay -->
+<div id="print-overlay">
+    <div id="print-area">
+        <div class="print-header">
+            <div class="print-brand-row">
+                <div class="print-logo-circle">
+                    <i class="fas fa-tint"></i>
+                </div>
+                <div class="print-brand-text">
+                    <div class="print-owner-name"><?php echo htmlspecialchars($owner_name); ?></div>
+                    <div class="print-company"><?php echo htmlspecialchars($company_name); ?></div>
+                    <div class="print-address"><?php echo htmlspecialchars($owner_address); ?></div>
+                    <div class="print-phone"><?php echo htmlspecialchars($owner_phone); ?></div>
+                </div>
+            </div>
+            <div class="print-divider"></div>
+            <div class="print-title-row">
+                <span class="print-doc-title">Stock Management Report</span>
+            </div>
+        </div>
+
+        <div class="print-sub-title">Current Stock Levels</div>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width:24px;">#</th>
+                    <th>Product Name</th>
+                    <th style="width:80px;" class="text-end">Price (Rs)</th>
+                    <th style="width:70px;" class="text-end">Stock</th>
+                    <th style="width:50px;" class="text-end">Min</th>
+                    <th style="width:65px;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $print_products = mysqli_query($conn, "SELECT * FROM products ORDER BY product_name");
+                $sno = 1;
+                if($print_products && mysqli_num_rows($print_products) > 0):
+                    while($p = mysqli_fetch_assoc($print_products)):
+                        $is_low = $p['current_stock'] <= $p['min_stock_level'];
+                ?>
+                    <tr>
+                        <td><?php echo $sno++; ?></td>
+                        <td><strong><?php echo htmlspecialchars($p['product_name']); ?></strong></td>
+                        <td class="text-end"><?php echo number_format($p['sale_price'], 2); ?></td>
+                        <td class="text-end"><?php echo number_format($p['current_stock']); ?></td>
+                        <td class="text-end"><?php echo number_format($p['min_stock_level']); ?></td>
+                        <td><?php echo $is_low ? 'Low Stock!' : 'In Stock'; ?></td>
+                    </tr>
+                <?php endwhile; ?>
+                <?php else: ?>
+                    <tr><td colspan="6" class="text-center" style="padding:40px;color:#999;">No products found.</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+
+        <div class="print-sub-title">Recent Production Records</div>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width:24px;">#</th>
+                    <th style="width:90px;">Production Date</th>
+                    <th>Product</th>
+                    <th style="width:90px;" class="text-end">Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $print_production = mysqli_query($conn, "SELECT si.*, p.product_name FROM stock_in si JOIN products p ON si.product_id = p.id ORDER BY si.stock_date DESC LIMIT 10");
+                $sno = 1;
+                if($print_production && mysqli_num_rows($print_production) > 0):
+                    while($si = mysqli_fetch_assoc($print_production)):
+                ?>
+                    <tr>
+                        <td><?php echo $sno++; ?></td>
+                        <td><?php echo date('d-m-Y', strtotime($si['stock_date'])); ?></td>
+                        <td><?php echo htmlspecialchars($si['product_name']); ?></td>
+                        <td class="text-end"><?php echo number_format($si['quantity']); ?></td>
+                    </tr>
+                <?php endwhile; ?>
+                <?php else: ?>
+                    <tr><td colspan="4" class="text-center" style="padding:40px;color:#999;">No production records found.</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+
+        <div class="print-sub-title">Stock Ledger (Transaction History)</div>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width:24px;">#</th>
+                    <th style="width:100px;">Date & Time</th>
+                    <th>Product</th>
+                    <th style="width:50px;">Type</th>
+                    <th style="width:40px;" class="text-end">IN</th>
+                    <th style="width:40px;" class="text-end">OUT</th>
+                    <th style="width:55px;" class="text-end">Running</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $print_ledger = mysqli_query($conn, "SELECT sl.*, p.product_name FROM stock_ledger sl JOIN products p ON sl.product_id = p.id ORDER BY sl.transaction_date DESC LIMIT 20");
+                $sno = 1;
+                if($print_ledger && mysqli_num_rows($print_ledger) > 0):
+                    while($sl = mysqli_fetch_assoc($print_ledger)):
+                ?>
+                    <tr>
+                        <td><?php echo $sno++; ?></td>
+                        <td><?php echo date('d-m-Y h:i A', strtotime($sl['transaction_date'])); ?></td>
+                        <td><?php echo htmlspecialchars($sl['product_name']); ?></td>
+                        <td><?php echo $sl['transaction_type'] == 'IN' ? 'Stock In' : 'Stock Out'; ?></td>
+                        <td class="text-end"><?php echo $sl['quantity_in'] > 0 ? number_format($sl['quantity_in']) : '-'; ?></td>
+                        <td class="text-end"><?php echo $sl['quantity_out'] > 0 ? number_format($sl['quantity_out']) : '-'; ?></td>
+                        <td class="text-end"><?php echo number_format($sl['running_stock']); ?></td>
+                        <td><small><?php echo htmlspecialchars($sl['description']); ?></small></td>
+                    </tr>
+                <?php endwhile; ?>
+                <?php else: ?>
+                    <tr><td colspan="8" class="text-center" style="padding:40px;color:#999;">No stock transactions found.</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+
+        <div class="print-footer">
+            Generated on: <?php echo date('d-m-Y h:i A'); ?>
+        </div>
+    </div>
+</div>
+
+<style>
+#print-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    z-index: 999999;
+    overflow: auto;
+}
+#print-area {
+    width: 960px;
+    margin: 0 auto;
+    padding: 20px 25px;
+    font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+    color: #222;
+}
+.print-header { margin-bottom: 14px; }
+.print-brand-row { display: flex; align-items: center; gap: 14px; }
+.print-logo-circle { width: 50px; height: 50px; background: linear-gradient(135deg, #A04657, #c96b7e); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff; flex-shrink: 0; }
+.print-brand-text { display: flex; flex-direction: column; gap: 1px; }
+.print-company { font-size: 16px; font-weight: 700; color: #A04657; font-family: 'Quicksand', 'Segoe UI', Arial, sans-serif; }
+.print-owner-name { font-size: 20px; font-weight: 800; color: #222; font-family: 'Quicksand', 'Segoe UI', Arial, sans-serif; }
+.print-address { font-size: 12px; color: #666; }
+.print-phone { font-size: 12px; font-weight: 600; color: #A04657; }
+.print-divider { height: 2px; background: linear-gradient(to right, #A04657, #e0a0ab); margin: 10px 0 8px; border-radius: 2px; }
+.print-title-row { display: flex; justify-content: space-between; align-items: center; }
+.print-doc-title { font-size: 14px; font-weight: 700; color: #444; font-family: 'Quicksand', 'Segoe UI', Arial, sans-serif; }
+.print-sub-title { font-size: 11px; font-weight: 700; color: #A04657; margin: 10px 0 4px; }
+.print-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 4px; }
+.print-table th { background: #A04657; color: #fff; padding: 5px 7px; font-weight: 600; font-size: 10px; text-align: left; white-space: nowrap; }
+.print-table th.text-end, .print-table td.text-end { text-align: right; }
+.print-table td { padding: 4px 7px; border-bottom: 1px solid #e6e6e6; color: #333; }
+.print-table tbody tr:nth-child(even) { background: #f9f9f9; }
+.print-table tbody tr:last-child td { border-bottom: 2px solid #A04657; }
+.print-footer { margin-top: 10px; text-align: center; font-size: 10px; color: #aaa; padding-top: 8px; border-top: 1px solid #eee; }
+</style>
+
 <!-- Add Product Modal with Sale Price -->
 <div class="modal fade" id="addProductModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -547,4 +688,130 @@ $month_out = ($month_out_query && mysqli_num_rows($month_out_query) > 0) ? mysql
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+function printStock() {
+    const content = document.getElementById('print-area').innerHTML;
+    const w = window.open('', '_blank');
+    w.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Stock Management Report</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { font-family: Arial, sans-serif; background: #f0f0f0; }
+                .toolbar { position: sticky; top: 0; background: #fff; border-bottom: 2px solid #A04657; padding: 10px 20px; display: flex; gap: 10px; align-items: center; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                .toolbar button { padding: 8px 20px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+                .btn-print { background: #A04657; color: #fff; }
+                .btn-print:hover { background: #8a3a4a; }
+                .btn-download { background: #28a745; color: #fff; }
+                .btn-download:hover { background: #218838; }
+                .btn-close { background: #6c757d; color: #fff; margin-left: auto; }
+                .btn-close:hover { background: #5a6268; }
+                .report-wrap { max-width: 1000px; margin: 0 auto; padding: 20px; }
+                .print-header { margin-bottom: 12px; }
+                .print-brand-row { display: flex; align-items: center; gap: 14px; }
+                .print-logo-circle { width: 50px; height: 50px; background: linear-gradient(135deg, #A04657, #c96b7e); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff; flex-shrink: 0; }
+                .print-brand-text { display: flex; flex-direction: column; gap: 1px; }
+                .print-company { font-size: 15px; font-weight: 700; color: #A04657; }
+                .print-owner-name { font-size: 18px; font-weight: 800; color: #222; }
+                .print-address { font-size: 11px; color: #666; }
+                .print-phone { font-size: 11px; font-weight: 600; color: #A04657; }
+                .print-divider { height: 2px; background: linear-gradient(to right, #A04657, #e0a0ab); margin: 8px 0 6px; border-radius: 2px; }
+                .print-title-row { display: flex; justify-content: space-between; align-items: center; }
+                .print-doc-title { font-size: 13px; font-weight: 700; color: #444; }
+                .print-sub-title { font-size: 11px; font-weight: 700; color: #A04657; margin: 8px 0 3px; }
+                table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 4px; }
+                th { background: #A04657; color: #fff; padding: 5px 7px; font-weight: 600; font-size: 10px; text-align: left; white-space: nowrap; }
+                th.text-end, td.text-end { text-align: right; }
+                td { padding: 4px 7px; border-bottom: 1px solid #e6e6e6; color: #333; }
+                tr:nth-child(even) td { background: #f9f9f9; }
+                tr:last-child td { border-bottom: 2px solid #A04657; }
+                .print-footer { margin-top: 8px; text-align: center; font-size: 10px; color: #aaa; padding-top: 6px; border-top: 1px solid #eee; }
+                @media print { .toolbar { display: none; } body { background: #fff; } }
+            </style>
+        </head>
+        <body>
+            <div class="toolbar">
+                <strong style="color:#A04657;">Stock Management Report</strong>
+                <button class="btn-print" onclick="window.print()">Print</button>
+                <button class="btn-download" onclick="downloadStockReport()">Download PNG</button>
+                <button class="btn-close" onclick="window.close()">Close</button>
+            </div>
+            <div class="report-wrap">
+                ${content}
+            </div>
+            <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js">
+            <\/script>
+            <script>
+                function downloadStockReport() {
+                    const el = document.querySelector('.report-wrap');
+                    html2canvas(el, { scale: 3, useCORS: true, backgroundColor: '#ffffff' }).then(canvas => {
+                        const a = document.createElement('a');
+                        a.href = canvas.toDataURL('image/png');
+                        a.download = 'stock_report_' + new Date().toISOString().slice(0, 10) + '.png';
+                        a.click();
+                    });
+                }
+            <\/script>
+        </body>
+        </html>
+    `);
+    w.document.close();
+}
+
+function downloadStock() {
+    var csv = [];
+    csv.push('"Stock Management Report"');
+    csv.push('"Generated: ' + new Date().toLocaleString() + '"');
+    csv.push('');
+    
+    csv.push('"Current Stock Levels"');
+    csv.push('"Product Name","Sale Price (Rs)","Current Stock","Min Level","Status"');
+    
+    var tables = document.querySelectorAll('.print-table');
+    if (tables.length > 0) {
+        var rows = tables[0].querySelectorAll('tbody tr');
+        rows.forEach(function(row) {
+            var cols = row.querySelectorAll('td');
+            if (cols.length < 6) return;
+            csv.push('"' + cols[1].innerText.trim() + '","' + cols[2].innerText.trim() + '","' + cols[3].innerText.trim() + '","' + cols[4].innerText.trim() + '","' + cols[5].innerText.trim() + '"');
+        });
+    }
+    
+    csv.push('');
+    csv.push('"Recent Production Records"');
+    csv.push('"Production Date","Product","Quantity Produced"');
+    if (tables.length > 1) {
+        var prodRows = tables[1].querySelectorAll('tbody tr');
+        prodRows.forEach(function(row) {
+            var cols = row.querySelectorAll('td');
+            if (cols.length < 4) return;
+            csv.push('"' + cols[1].innerText.trim() + '","' + cols[2].innerText.trim() + '","' + cols[3].innerText.trim() + '"');
+        });
+    }
+    
+    csv.push('');
+    csv.push('"Stock Ledger (Transaction History)"');
+    csv.push('"Date & Time","Product","Type","IN","OUT","Running Stock","Description"');
+    if (tables.length > 2) {
+        var ledgerRows = tables[2].querySelectorAll('tbody tr');
+        ledgerRows.forEach(function(row) {
+            var cols = row.querySelectorAll('td');
+            if (cols.length < 8) return;
+            csv.push('"' + cols[1].innerText.trim() + '","' + cols[2].innerText.trim() + '","' + cols[3].innerText.trim() + '","' + cols[4].innerText.trim() + '","' + cols[5].innerText.trim() + '","' + cols[6].innerText.trim() + '","' + cols[7].innerText.trim() + '"');
+        });
+    }
+    
+    var blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'stock_report_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+</script>
 <?php include '../includes/footer.php'; ?>

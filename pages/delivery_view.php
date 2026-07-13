@@ -4,12 +4,16 @@ if (!isset($_SESSION['admin_logged_in'])) header("Location: ../login.php");
 
 $route_name = isset($_GET['route_name']) ? mysqli_real_escape_string($conn, $_GET['route_name']) : '';
 $block = isset($_GET['block']) ? mysqli_real_escape_string($conn, $_GET['block']) : '';
+$area = isset($_GET['area']) ? mysqli_real_escape_string($conn, $_GET['area']) : '';
+$salesman = isset($_GET['salesman']) ? mysqli_real_escape_string($conn, $_GET['salesman']) : '';
 $from_date = isset($_GET['from_date']) ? $_GET['from_date'] : '';
 $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : '';
 
 $where = " WHERE 1=1";
 if ($route_name) $where .= " AND r.route_name LIKE '%$route_name%'";
 if ($block) $where .= " AND (c.block LIKE '%$block%' OR r.block LIKE '%$block%')";
+if ($area) $where .= " AND (c.area LIKE '%$area%' OR r.area LIKE '%$area%')";
+if ($salesman) $where .= " AND (c.salesman LIKE '%$salesman%' OR r.salesman LIKE '%$salesman%')";
 if ($from_date) $where .= " AND DATE(d.delivery_datetime) >= '$from_date'";
 if ($to_date) $where .= " AND DATE(d.delivery_datetime) <= '$to_date'";
 
@@ -73,13 +77,21 @@ $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
     <div class="card shadow-sm border-0 rounded-4 mb-4 no-print">
         <div class="card-body p-4">
             <form method="GET" class="row g-3 align-items-end">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold"><i class="fas fa-route me-1"></i> Route Name</label>
-                    <input type="text" name="route_name" class="form-control" placeholder="Type route name..." value="<?php echo htmlspecialchars($route_name); ?>">
+                    <input type="text" name="route_name" class="form-control" placeholder="Route..." value="<?php echo htmlspecialchars($route_name); ?>">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold"><i class="fas fa-cube me-1"></i> Block</label>
-                    <input type="text" name="block" class="form-control" placeholder="Type block..." value="<?php echo htmlspecialchars($block); ?>">
+                    <input type="text" name="block" class="form-control" placeholder="Block..." value="<?php echo htmlspecialchars($block); ?>">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold"><i class="fas fa-map-marker-alt me-1"></i> Area</label>
+                    <input type="text" name="area" class="form-control" placeholder="Area..." value="<?php echo htmlspecialchars($area); ?>">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold"><i class="fas fa-user-tie me-1"></i> Salesman</label>
+                    <input type="text" name="salesman" class="form-control" placeholder="Salesman..." value="<?php echo htmlspecialchars($salesman); ?>">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fw-semibold"><i class="fas fa-calendar me-1"></i> From</label>
@@ -89,10 +101,13 @@ $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
                     <label class="form-label fw-semibold"><i class="fas fa-calendar me-1"></i> To</label>
                     <input type="date" name="to_date" class="form-control" value="<?php echo $to_date; ?>">
                 </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-secondary w-100 rounded-pill">
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-secondary flex-fill" style="height: 46px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
                         <i class="fas fa-search me-2"></i> Search
                     </button>
+                    <a href="delivery_view.php" class="btn btn-outline-secondary flex-fill" style="height: 46px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-undo me-1"></i> Reset
+                    </a>
                 </div>
             </form>
         </div>
@@ -187,11 +202,16 @@ $summary = mysqli_fetch_assoc(mysqli_query($conn, $summary_query));
             <div class="print-divider"></div>
             <div class="print-title-row">
                 <span class="print-doc-title">Delivery Report</span>
-                <?php if($route_name || $block): ?>
+                <?php if($route_name || $block || $area || $salesman): ?>
                     <span class="print-date-range">
-                        <?php if($route_name) echo 'Route: ' . htmlspecialchars($route_name); ?>
-                        <?php if($route_name && $block) echo ' | '; ?>
-                        <?php if($block) echo 'Block: ' . htmlspecialchars($block); ?>
+                        <?php 
+                        $print_parts = [];
+                        if($route_name) $print_parts[] = 'Route: ' . htmlspecialchars($route_name);
+                        if($block) $print_parts[] = 'Block: ' . htmlspecialchars($block);
+                        if($area) $print_parts[] = 'Area: ' . htmlspecialchars($area);
+                        if($salesman) $print_parts[] = 'Salesman: ' . htmlspecialchars($salesman);
+                        echo implode(' | ', $print_parts);
+                        ?>
                     </span>
                 <?php endif; ?>
             </div>

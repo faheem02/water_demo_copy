@@ -464,11 +464,11 @@ $routes = mysqli_query($conn, "SELECT * FROM routes ORDER BY route_name");
         </div>
     </div>
 
-    <!-- Print & Export Buttons -->
+    <!-- Print Button -->
     <div class="row mt-4">
         <div class="col-12 text-end">
-            <button onclick="window.print()" class="btn btn-outline-secondary rounded-pill px-4 me-2">
-                <i class="fas fa-print me-2"></i> Print Report
+            <button onclick="window.print()" class="btn btn-outline-dark rounded-pill px-4">
+                <i class="fas fa-print me-2"></i> Print
             </button>
         </div>
     </div>
